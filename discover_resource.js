@@ -53,8 +53,7 @@ DiscoverResource.prototype.create = function(env, next) {
     }
     
     self.scout.startCommunicatingWithDevice(bodyObject.id);
-
-    env.reponse.statusCode = 200;
+    env.response.statusCode = 201;
     return next(env);
   });  
 };
