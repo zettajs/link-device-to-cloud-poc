@@ -2,6 +2,7 @@ var util = require('util');
 var Scout = require('zetta').Scout;
 var mqtt = require('mqtt');
 var MqttClient = require('./mqtt-client');
+var MqttDriver = require('./mqtt_device');
 var DiscoverResource = require('./discover_resource');
 
 var MqttScout = module.exports = function(options) {
@@ -36,5 +37,14 @@ MqttScout.prototype.startCommunicatingWithDevice = function(deviceId) {
 };
 
 MqttScout.prototype.initDevice = function(deviceId, deviceModel) {
-  console.log('init device', deviceId, deviceModel)
+  console.log('init device', deviceId, deviceModel);
+  var self = this;
+  var query = this.server.where({ id: deviceId });
+  this.server.find(query, function(err, results) {
+    if (results.length > 0) {
+      self.provision(results[0], MqttDriver, deviceId, deviceModel, self.client);
+    } else {
+      self.discover(MqttDriver, deviceId, deviceModel, self.client);
+    }
+  });
 };

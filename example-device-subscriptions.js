@@ -23,21 +23,27 @@ config
 
 // Init Device - Zetta publishes that it's been initialized.
 client.publish('$init', JSON.stringify({
-                                type: 'thermostat', // Should this be defined by the device? Could zetta derive it from provisioning/auth steps.
-                                state: 'off',
-                                properties: {
-                                  serialNumber: '1L080B50230',
-                                  modelNumber: '13WX78KS011',
-                                  macAddress: '00:0a:95:9d:68:16',
-                                  temperature: 60
-                                },
-                                transitions: ['set-temperature', 'turn-fan-on', 'turn-fan-off', 'turn-on', 'turn-off'],
-                                machine: { // Send state machine, need list of states and what transitions are allowed for each.
-                                  // Could you bit masking mapping to the transitions array, could save data on the wire and memory. Program space wouldn't necessarily be effected.
-                                  'on':  0b10111, 
-                                  'off': 0b01111
-                                },
-                                streams: ['temperature']
+  type: 'thermostat', // Should this be defined by the device? Could zetta derive it from provisioning/auth steps.
+  state: 'off',
+  properties: {
+    serialNumber: '1L080B50230',
+    modelNumber: '13WX78KS011',
+    macAddress: '00:0a:95:9d:68:16',
+    temperature: 60
+  },
+  transitions: [
+    { name: 'set-temperature', args: [{ type: 'number', name: 'temperature' }]},
+    { name: 'turn-fan-on' },
+    { name: 'turn-fan-off' },
+    { name: 'turn-on' },
+    { name: 'turn-off'}
+  ],
+  machine: { // Send state machine, need list of states and what transitions are allowed for each.
+    // Could you bit masking mapping to the transitions array, could save data on the wire and memory. Program space wouldn't necessarily be effected.
+    'on':  0b10111, 
+    'off': 0b01000
+  },
+  streams: ['temperature']
 }));
 
 client.subscribe('$init/ack');
@@ -45,26 +51,28 @@ client.on('$init/ack', function() {
   console.log('device connected')
 });
 
-/*
 
 // Publish Stream data for temperature
 setInterval(function() {
-  client.publish('temperature', Math.rand() * 100);
-}, 250);
+  client.publish('temperature', ''+(Math.random() * 100));
+}, 500);
 
 
+console.log(process.pid);
 // Wait for "on" button on device to send turn-on transition
-button.on('pressed', function() {
+process.on('SIGUSR2', function() {
+  console.log('button press')
   // Device needs to publish a unsolicited transition happened and communicate state change
-  client.published('$transition/turn-on', { state: 'on' } );
+  client.publish('$device-transition/turn-on', JSON.stringify({ state: 'on' }));
 });
 
+/*
 
 // Setup Transitions
 client.on('$transition/turn-off', function(message) {
   
   // Device needs to ACK and communicate state change
-  client.publish('$transition/ack', { messageId: message.messageId,
+  client.publish('$transition/turn-off/ack', { messageId: message.messageId,
                                       state: 'off', // tell zetta of new state
                                       properties: { // update all the properties on the driver in zetta
                                         someValue: 'New Value'
@@ -72,11 +80,21 @@ client.on('$transition/turn-off', function(message) {
                                     });
 });
 
+*/
 
 // more ...
+
+client.subscribe('$transition/turn-on');
 client.on('$transition/turn-on', function(message) {
+  console.log('Turn on...')
+  var json = JSON.parse(message);
+  // Device needs to ACK and communicate state change
+  client.publish('$transition/turn-on/ack', JSON.stringify({ messageId: message.messageId,
+                                              state: 'on'
+                                                           }));  
 });
 
+/*
 client.on('$transition/set-temperature', function(message) {
 });
 
