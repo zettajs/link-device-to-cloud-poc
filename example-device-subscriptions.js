@@ -66,25 +66,15 @@ process.on('SIGUSR2', function() {
   client.publish('$device-transition/turn-on', JSON.stringify({ state: 'on' }));
 });
 
-/*
 
-// Setup Transitions
-client.on('$transition/turn-off', function(message) {
-  
-  // Device needs to ACK and communicate state change
-  client.publish('$transition/turn-off/ack', { messageId: message.messageId,
-                                      state: 'off', // tell zetta of new state
-                                      properties: { // update all the properties on the driver in zetta
-                                        someValue: 'New Value'
-                                      }
-                                    });
-});
-
-*/
 
 // more ...
 
-client.subscribe('$transition/turn-on');
+var transitions = ['turn-on', 'turn-off', 'set-temperature', 'turn-fan-on', 'turn-fan-off'];
+transitions.forEach(function(topic) {
+  client.subscribe('$transition/'+topic);
+});
+
 client.on('$transition/turn-on', function(message) {
   console.log('Turn on...')
   var json = JSON.parse(message);
@@ -94,14 +84,38 @@ client.on('$transition/turn-on', function(message) {
                                                            }));  
 });
 
-/*
+client.on('$transition/turn-off', function(message) {
+  console.log('Turn off...')
+  var json = JSON.parse(message);
+  // Device needs to ACK and communicate state change
+  client.publish('$transition/turn-off/ack', JSON.stringify({ messageId: message.messageId,
+                                              state: 'off'
+                                                           }));  
+});
+
 client.on('$transition/set-temperature', function(message) {
+  var json = JSON.parse(message);
+  console.log('set temperature... ', Number(json.input[0]));
+  // Device needs to ACK and communicate state change
+  client.publish('$transition/set-temperature/ack', JSON.stringify({ messageId: message.messageId
+                                                           }));  
+
 });
 
 client.on('$transition/turn-fan-on', function(message) {
+  console.log('Turn on fan...')
+  var json = JSON.parse(message);
+  // Device needs to ACK and communicate state change
+  client.publish('$transition/turn-fan-on/ack', JSON.stringify({ messageId: message.messageId
+                                                           }));  
 });
 
 client.on('$transition/turn-fan-off', function(message) {
+  console.log('Turn off fan...')
+  var json = JSON.parse(message);
+  // Device needs to ACK and communicate state change
+  client.publish('$transition/turn-fan-off/ack', JSON.stringify({ messageId: message.messageId
+                                                           }));  
 });
 
-*/
+

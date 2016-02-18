@@ -44,7 +44,7 @@ Driver.prototype.init = function(config) {
     self._client.on('device/' + self.id + '/$device-transition/' + transition.name, function(message, packet) {
       // check for our request.
       console.log('On Transition:', message);
-      self._handleTransitionFromDevice(message, packet);
+      self._handleTransitionFromDevice(transition.name, message, packet);
     });
   });
 
@@ -102,11 +102,19 @@ Driver.prototype._handleDeviceUpdate = function(update) {
   }
 };
 
-Driver.prototype._handleTransitionFromDevice = function(message, packet) {
+Driver.prototype._handleTransitionFromDevice = function(transitionName, message, packet) {
   var json = JSON.parse(message);
+  var self = this;
 
   // tell zetta transition happened.
-//  this.call('');
+  // this.call('');
   
   this._handleDeviceUpdate(json);
+
+  this._emitter.emit(transitionName);
+
+  this._sendLogStreamEvent(transitionName, [], function(json) {
+    self._log.emit('log', 'device', self.type + ' transition ' + transitionName, json); 
+  });
+
 };
