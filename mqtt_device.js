@@ -33,7 +33,6 @@ Driver.prototype.init = function(config) {
 
   Object.keys(this._model.machine).forEach(function(state) {
     var transitions = getFromBitMask(self._model.machine[state], self._model.transitions);
-    console.log('State:', state, transitions);
     config.when(state, { allow: transitions });
   });
 
@@ -43,7 +42,6 @@ Driver.prototype.init = function(config) {
     self._client.subscribe('device/' + self.id + '/$transition/' + transition.name + '/ack');
     self._client.on('device/' + self.id + '/$device-transition/' + transition.name, function(message, packet) {
       // check for our request.
-      console.log('On Transition:', message);
       self._handleTransitionFromDevice(transition.name, message, packet);
     });
   });
@@ -53,7 +51,6 @@ Driver.prototype.init = function(config) {
       var topic = 'device/' + self.id + '/' + name;
       self._client.subscribe(topic);
       self._client.on(topic, function(message, packet) {
-        console.log('streamData:', message.toString());
         stream.write(message.toString());
       });
     });
@@ -63,21 +60,21 @@ Driver.prototype.init = function(config) {
 Driver.prototype._handleTransition = function(transition /* args... callback*/) {
   var self = this;
   var callback = arguments[arguments.length-1];
+  var args = arguments;
   
   var input = [];
   if (transition.args) {
     transition.args.forEach(function(arg, idx) {
-      input.push(arguments[idx+1]);
+      input.push(args[idx+1]);
     });
   }
   
   var message = { messageId: 1, input: input };
+  console.log(message);
   var topic = 'device/' + this.id + '/$transition/' + transition.name;
 
-  console.log('Publish:', topic)
   this._client.publish(topic, JSON.stringify(message));
   this._client.once(topic + '/ack', function(message, packet) {
-    console.log('got transition ack');
     var json = JSON.parse(message);
     if (json.failure) {
       return callback(new Error('Failed'));

@@ -95,9 +95,14 @@ client.on('$transition/turn-off', function(message) {
 
 client.on('$transition/set-temperature', function(message) {
   var json = JSON.parse(message);
-  console.log('set temperature... ', Number(json.input[0]));
+  console.log(json);
+  var setPoint = Number(json.input[0])
+  console.log('set temperature... ', setPoint);
   // Device needs to ACK and communicate state change
-  client.publish('$transition/set-temperature/ack', JSON.stringify({ messageId: message.messageId
+  client.publish('$transition/set-temperature/ack', JSON.stringify({ messageId: message.messageId,
+                                                          properties: {
+                                                            setPoint: setPoint
+                                                          }
                                                            }));  
 
 });
