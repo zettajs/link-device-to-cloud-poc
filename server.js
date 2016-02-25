@@ -85,7 +85,7 @@ function initDeviceOnTarget(targetUrl, deviceId, callback) {
   };
   var req = http.request(opts, function(res) {
     if (res.statusCode !== 201) {
-      return callback(new Error('Did not create'));
+      return callback(new Error('Failed allocating zetta target'));
     }
     return callback();
   });
