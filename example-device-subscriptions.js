@@ -6,6 +6,8 @@ var client = new MqttClient(mqtt.connect('mqtt://localhost:1883', {
   password: 'abc'
 }));
 
+
+var currentState = 'off';
 // Zetta Model of Thermostat
 /*
 config
@@ -21,10 +23,12 @@ config
 
 // Mqtt Device
 
+
+
 // Init Device - Zetta publishes that it's been initialized.
 client.publish('$init', JSON.stringify({
   type: 'thermostat', // Should this be defined by the device? Could zetta derive it from provisioning/auth steps.
-  state: 'off',
+  state: currentState,
   properties: {
     serialNumber: '1L080B50230',
     modelNumber: '13WX78KS011',
@@ -63,7 +67,8 @@ console.log(process.pid);
 process.on('SIGUSR2', function() {
   console.log('button press')
   // Device needs to publish a unsolicited transition happened and communicate state change
-  client.publish('$device-transition/turn-on', JSON.stringify({ state: 'on' }));
+  currentState = (currentState == 'off') ? 'on' : 'off';
+  client.publish('$device-transition/turn-' + currentState, JSON.stringify({ state: currentState }));
 });
 
 
@@ -78,6 +83,7 @@ transitions.forEach(function(topic) {
 client.on('$transition/turn-on', function(message) {
   console.log('Turn on...')
   var json = JSON.parse(message);
+  currentState = 'on';
   // Device needs to ACK and communicate state change
   client.publish('$transition/turn-on/ack', JSON.stringify({ messageId: message.messageId,
                                               state: 'on'
@@ -87,6 +93,7 @@ client.on('$transition/turn-on', function(message) {
 client.on('$transition/turn-off', function(message) {
   console.log('Turn off...')
   var json = JSON.parse(message);
+  currentState = 'off';
   // Device needs to ACK and communicate state change
   client.publish('$transition/turn-off/ack', JSON.stringify({ messageId: message.messageId,
                                               state: 'off'

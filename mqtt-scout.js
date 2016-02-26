@@ -25,11 +25,15 @@ MqttScout.prototype.init = function(callback) {
 };
 
 MqttScout.prototype.startCommunicatingWithDevice = function(deviceId) {
-  console.log('start comm')
   var self = this;
   this.client.subscribe('device/' + deviceId + '/$init');
   this.client.once('device/' + deviceId + '/$init', function(message, packet) {
-    var deviceModel = JSON.parse(message);
+    try {
+      var deviceModel = JSON.parse(message);
+    } catch(err) {
+      console.error('Failed to parse device definition', err);
+      return;
+    }
     self.initDevice(deviceId, deviceModel);
     self.client.unsubscribe('device/' + deviceId + '/$init');
     self.client.publish('device/' + deviceId + '/$init/ack', JSON.stringify({}));
@@ -37,7 +41,6 @@ MqttScout.prototype.startCommunicatingWithDevice = function(deviceId) {
 };
 
 MqttScout.prototype.initDevice = function(deviceId, deviceModel) {
-  console.log('init device', deviceId, deviceModel);
   var self = this;
   var query = this.server.where({ id: deviceId });
   this.server.find(query, function(err, results) {
