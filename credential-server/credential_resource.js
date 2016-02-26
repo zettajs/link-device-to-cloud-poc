@@ -28,7 +28,7 @@ CredentialResource.prototype.create = function(env, next) {
     try {
       body = JSON.parse(body)
     } catch(e) {
-      env.repsonse.statusCode = 400;
+      env.response.statusCode = 400;
       env.response.body = e.message;
       return next(env);
     }
@@ -147,7 +147,7 @@ function get(callback) {
 function del(id, callback) {
   data.some(function(obj, idx) {
     if(obj.id == id) {
-      data.unshift(idx);
+      data.splice(idx, 1);
       return true;
     }
   });
