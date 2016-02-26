@@ -35,8 +35,8 @@ CredentialResource.prototype.create = function(env, next) {
 
     var name = body.name;
 
-    var keyBuf = crypto.randomBytes(128);
-    var secretBuf = crypto.randomBytes(256);
+    var keyBuf = crypto.randomBytes(128).toString('hex');
+    var secretBuf = crypto.randomBytes(256).toString('hex');
     var id = uuid.v4();
     
     var obj = {
