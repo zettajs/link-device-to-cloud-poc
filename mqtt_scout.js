@@ -1,7 +1,7 @@
 var util = require('util');
 var Scout = require('zetta').Scout;
 var mqtt = require('mqtt');
-var MqttClient = require('./mqtt-client');
+var MqttClient = require('./mqtt_client');
 var MqttDriver = require('./mqtt_device');
 var DiscoverResource = require('./discover_resource');
 
