@@ -8,7 +8,6 @@ var MqttClient = module.exports = function(client) {
   var self = this;
   this._client.on('message', function(topic, message, packet) {
     // device/123123/$init
-    console.log('on message:', topic)
     self.emit(topic, message, packet);
   });
 

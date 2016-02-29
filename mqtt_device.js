@@ -46,14 +46,52 @@ Driver.prototype.init = function(config) {
     });
   });
 
-  this._model.streams.forEach(function(name) {
-    config.stream(name, function(stream) {
-      var topic = 'device/' + self.id + '/' + name;
+  this._model.streams.forEach(function(obj) {
+    var streamConfig = {
+      name: '',
+      monitor: true,
+      binary: false
+    };
+    
+    if (typeof obj === 'object') {
+      if (!obj.name) {
+        return;
+      }
+      streamConfig.name = obj.name + '';
+      streamConfig.monitor = (obj.monitor) ? true : false;
+      streamConfig.binary = (obj.binary) ? true : false;
+    } else {
+      // If not obj convert to string and use for name
+      streamConfig.name = obj + '';
+    }
+
+    config.stream(streamConfig.name, function(stream) {
+      var topic = 'device/' + self.id + '/' + streamConfig.name;
       self._client.subscribe(topic);
       self._client.on(topic, function(message, packet) {
-        stream.write(message.toString());
+
+        if (streamConfig.binary) {
+          stream.write(message);
+          return;
+        }
+        
+        var json = null;
+        try {
+          json = JSON.parse(message.toString());
+        } catch(err) {
+          stream.write(message.toString());  
+        }
+
+        if (streamConfig.monitor) {
+          self[streamConfig.name] = json;
+        }
+        
+        stream.write(json);
       });
+    }, {
+      binary: streamConfig.binary
     });
+    
   });
 };
 
@@ -70,7 +108,6 @@ Driver.prototype._handleTransition = function(transition /* args... callback*/) 
   }
   
   var message = { messageId: 1, input: input };
-  console.log(message);
   var topic = 'device/' + this.id + '/$transition/' + transition.name;
 
   this._client.publish(topic, JSON.stringify(message));
@@ -103,15 +140,9 @@ Driver.prototype._handleTransitionFromDevice = function(transitionName, message,
   var json = JSON.parse(message);
   var self = this;
 
-  // tell zetta transition happened.
-  // this.call('');
-  
   this._handleDeviceUpdate(json);
-
   this._emitter.emit(transitionName);
-
   this._sendLogStreamEvent(transitionName, [], function(json) {
     self._log.emit('log', 'device', self.type + ' transition ' + transitionName, json); 
   });
-
 };
