@@ -31,6 +31,15 @@ Driver.prototype.init = function(config) {
     .type(this._model.type)
     .state(this._model.state)
 
+  this._model.transitions = this._model.transitions.map(function(transition) {
+    // Optionally support a string as the transition name
+    if (typeof transition === 'string') {
+      return { name: transition, args: [] };
+    } else {
+      return transition;
+    }
+  });
+  
   Object.keys(this._model.machine).forEach(function(state) {
     var transitions = getFromBitMask(self._model.machine[state], self._model.transitions);
     config.when(state, { allow: transitions });

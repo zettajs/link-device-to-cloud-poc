@@ -37,10 +37,10 @@ client.publish('$init', JSON.stringify({
   },
   transitions: [
     { name: 'set-temperature', args: [{ type: 'number', name: 'temperature' }]},
-    { name: 'turn-fan-on' },
-    { name: 'turn-fan-off' },
-    { name: 'turn-on' },
-    { name: 'turn-off'}
+    'turn-fan-on',
+    'turn-fan-off',
+    'turn-on',
+    'turn-off'
   ],
   machine: { // Send state machine, need list of states and what transitions are allowed for each.
     // Could you bit masking mapping to the transitions array, could save data on the wire and memory. Program space wouldn't necessarily be effected.
