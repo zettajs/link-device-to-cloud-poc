@@ -14,6 +14,7 @@ CredentialResource.prototype.init = function(config) {
     .post('/', this.create)
     .get('/', this.list)
     .del('/{id}', this.del)
+    .post('/authenticate', this.authenticate)
 };
 
 CredentialResource.prototype.create = function(env, next) {
@@ -35,8 +36,8 @@ CredentialResource.prototype.create = function(env, next) {
 
     var name = body.name;
 
-    var keyBuf = crypto.randomBytes(128).toString('hex');
-    var secretBuf = crypto.randomBytes(256).toString('hex');
+    var keyBuf = crypto.randomBytes(12).toString('hex');
+    var secretBuf = crypto.randomBytes(24).toString('hex');
     var id = uuid.v4();
     
     var obj = {
@@ -91,7 +92,7 @@ CredentialResource.prototype.list = function(env, next) {
     ]
   }
 
-  get(function(err, data) {
+  list(function(err, data) {
     if(err) {
       env.response.statusCode = 500;
       return next(env);
@@ -134,14 +135,85 @@ CredentialResource.prototype.del = function(env, next) {
   })
 }
 
+CredentialResource.prototype.authenticate = function(env, next) {
+  env.request.getBody(function(err, body) {
+    if(err) {
+      env.response.statusCode = 500; 
+      return next(env); 
+    }
+
+    body = body.toString();
+
+    try {
+      body = JSON.parse(body)
+    } catch(e) {
+      env.response.statusCode = 400;
+      env.response.body = e.message;
+      return next(env);
+    }
+
+    if (body.username === undefined || body.password === undefined) {
+      env.response.statusCode = 400;
+      env.response.body = 'Supply username and password';
+      return next(env);
+    }
+
+
+    get(body.username, function(err, device) {
+      if (err) {
+        env.response.statusCode = 500;
+        return next(env);
+      }
+
+      if (!device) {
+        env.response.statusCode = 401;
+        return next(env);
+      }
+
+      if (device.password !== body.password) {
+        env.response.statusCode = 401;
+        return next(env);
+      }
+
+      var responseBody = {
+        class: ['credential'],
+        properties: {
+          name: device.name,
+          username: device.username,
+          id: device.id
+        },
+        links: [
+          {
+            rel: ['self'],
+            href: env.helpers.url.path('/')
+          }  
+        ]
+      };
+
+      env.response.statusCode = 202;
+      env.response.body = responseBody;
+      return next(env);
+    });
+  });  
+};
+
+
 var data = [];
 function save(obj, callback) {
   data.push(obj);
   callback();
 }
 
-function get(callback) {
+function list(callback) {
   callback(null, data);
+}
+
+function get(username, callback) {
+  var device = data.filter(function(obj, idx) {
+    return (obj.username == username);
+  })[0];
+  
+  callback(null, device);
 }
 
 function del(id, callback) {
