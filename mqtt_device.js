@@ -31,6 +31,9 @@ Driver.prototype.init = function(config) {
     .type(this._model.type)
     .state(this._model.state)
 
+  config
+    .when('$disconnected', { allow: [] });
+
   this._model.transitions = this._model.transitions.map(function(transition) {
     // Optionally support a string as the transition name
     if (typeof transition === 'string') {
@@ -45,6 +48,25 @@ Driver.prototype.init = function(config) {
     config.when(state, { allow: transitions });
   });
 
+  var timeoutInterval = 15000;
+  var heartbeatTimer = setTimeout(function() {
+    self.destroy();  
+  }, timeoutInterval);
+
+  self._client.subscribe('device/' + self.id + '/$disconnect');
+  self._client.on('device/' + self.id + '/$disconnect', function(msg, packet) {
+    self.state = '$disconnected';
+  });
+
+  self._client.subscribe('device/' + self.id + '/$heartbeat');
+  self._client.on('device/' + self.id + '/$heartbeat', function(msg, packet) {
+    clearTimeout(heartbeatTimer);
+    var msgObj = JSON.parse(msg);
+    self._handleDeviceUpdate(msgObj);
+    heartbeatTimer = setTimeout(function() {
+      self.destroy();  
+    }, timeoutInterval);
+  });
   this._model.transitions.forEach(function(transition) {
     config.map(transition.name, self._handleTransition.bind(self, transition), (transition.args || []));
     self._client.subscribe('device/' + self.id + '/$device-transition/' + transition.name);

@@ -130,4 +130,6 @@ client.on('$transition/turn-fan-off', function(message) {
                                                            }));  
 });
 
-
+setInterval(function() {
+  client.publish('$heartbeat', JSON.stringify({ state: currentState }));
+}, 5000)

@@ -64,6 +64,7 @@ function authenticate(client, username, password, callback) {
   }
   
   authenticateWithApi(username, password, function(err, device) {
+    client.deviceId = device.id;
     if (err) {
       return callback(null, false);
     }
@@ -165,3 +166,13 @@ server.on('unsubscribed', function (topic, client) {
   console.log('unsubscribed := ', client.id, topic);
 });
 
+server.on('clientDisconnected', function(client) {
+  if(client.deviceId) {
+    var packet = {
+      topic: 'device/' + client.deviceId + '/$disconnect',
+      payload: '' 
+    };
+
+    server.publish(packet);
+  }
+});
