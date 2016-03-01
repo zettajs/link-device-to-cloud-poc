@@ -44,6 +44,7 @@ CredentialResource.prototype.create = function(env, next) {
       name: name,
       username: keyBuf,
       password: secretBuf,
+      tenantId: 'default',
       id: id
     }
 
@@ -104,7 +105,8 @@ CredentialResource.prototype.list = function(env, next) {
         properties: {
           name: obj.name,
           username: obj.username,
-          id: obj.id
+          id: obj.id,
+          tenantId: 'default'
         },
         links: [
           {
@@ -180,7 +182,8 @@ CredentialResource.prototype.authenticate = function(env, next) {
         properties: {
           name: device.name,
           username: device.username,
-          id: device.id
+          id: device.id,
+          tenantId: 'default'
         },
         links: [
           {

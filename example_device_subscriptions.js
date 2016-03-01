@@ -2,8 +2,8 @@ var mqtt = require('mqtt');
 var MqttClient = require('./mqtt_client');
 
 var client = new MqttClient(mqtt.connect('mqtt://localhost:1883', {
-  username: 'test2',
-  password: 'abc'
+  username: process.argv[2],
+  password: process.argv[3]
 }));
 
 
