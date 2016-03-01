@@ -45,7 +45,18 @@ MqttScout.prototype.initDevice = function(deviceId, deviceModel) {
   var query = this.server.where({ id: deviceId });
   this.server.find(query, function(err, results) {
     if (results.length > 0) {
-      self.provision(results[0], MqttDriver, deviceId, deviceModel, self.client);
+      var device = self.provision(results[0], MqttDriver, deviceId, deviceModel, self.client);
+      if(!device) {
+        device = self.server._jsDevices[deviceId];
+        device.state = deviceModel.state;
+        if(deviceModel.properties) {
+          Object.keys(deviceModel.properties).forEach(function(key) {
+            device[key] = deviceModel.properties[key];
+          });
+        }
+        device._resetHeartbeat();
+        device.log('device reconnected.');
+      }
     } else {
       self.discover(MqttDriver, deviceId, deviceModel, self.client);
     }

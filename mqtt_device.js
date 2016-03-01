@@ -48,24 +48,18 @@ Driver.prototype.init = function(config) {
     config.when(state, { allow: transitions });
   });
 
-  var timeoutInterval = 15000;
-  var heartbeatTimer = setTimeout(function() {
-    self.destroy();  
-  }, timeoutInterval);
-
+  
   self._client.subscribe('device/' + self.id + '/$disconnect');
   self._client.on('device/' + self.id + '/$disconnect', function(msg, packet) {
     self.state = '$disconnected';
   });
 
+  self._resetHeartbeat();
   self._client.subscribe('device/' + self.id + '/$heartbeat');
   self._client.on('device/' + self.id + '/$heartbeat', function(msg, packet) {
-    clearTimeout(heartbeatTimer);
     var msgObj = JSON.parse(msg);
     self._handleDeviceUpdate(msgObj);
-    heartbeatTimer = setTimeout(function() {
-      self.destroy();  
-    }, timeoutInterval);
+    self._resetHeartbeat(); 
   });
   this._model.transitions.forEach(function(transition) {
     config.map(transition.name, self._handleTransition.bind(self, transition), (transition.args || []));
@@ -177,3 +171,12 @@ Driver.prototype._handleTransitionFromDevice = function(transitionName, message,
     self._log.emit('log', 'device', self.type + ' transition ' + transitionName, json); 
   });
 };
+
+Driver.prototype._resetHeartbeat = function() {
+  clearTimeout(this._heartbeatTimer);
+  var self = this;
+  var timeoutInterval = 15000;
+  this._heartbeatTimer = setTimeout(function() {
+    self.destroy();  
+  }, timeoutInterval);
+}
