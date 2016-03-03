@@ -59,6 +59,18 @@ Driver.prototype.init = function(config) {
     }, 300000);
   });
 
+  self._client.subscribe('device/' + self.id + '/$log');
+  self._client.on('device/' + self.id + '/$log', function(msg, packet) {
+    var msgObj = JSON.parse(msg);
+    if (typeof msgObj.message !== 'string') {
+      return;
+    }
+    
+    var level = (['log', 'info', 'warn', 'error'].indexOf(msgObj.level) >= 0) ? msgObj.level : 'log';
+
+    self[level](msgObj.message, msgObj.data);
+  });
+
   self._client.subscribe('device/' + self.id + '/$heartbeat');
   self._client.on('device/' + self.id + '/$heartbeat', function(msg, packet) {
     var msgObj = JSON.parse(msg);
