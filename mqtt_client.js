@@ -11,11 +11,11 @@ var MqttClient = module.exports = function(client) {
     self.emit(topic, message, packet);
   });
 
-  this._client.on('connect', this.emit.bind(this));
-  this._client.on('reconnect', this.emit.bind(this));
-  this._client.on('offline', this.emit.bind(this));
-  this._client.on('close', this.emit.bind(this));
-  this._client.on('error', this.emit.bind(this));
+  this._client.on('connect', this.emit.bind(this, 'connect'));
+  this._client.on('reconnect', this.emit.bind(this, 'reconnect'));
+  this._client.on('offline', this.emit.bind(this, 'offline'));
+  this._client.on('close', this.emit.bind(this, 'close'));
+  this._client.on('error', this.emit.bind(this, 'error'));
 };
 util.inherits(MqttClient, EventEmitter);
 

@@ -16,6 +16,11 @@ var targetKey = {
   password: '12345'
 };
 
+var KeepAlive = {
+  min: 15,
+  max: 720
+};
+
 function authenticateWithApi(username, password, callback) {
   var parsed = url.parse(process.env.AUTH_API || 'http://localhost:1338');
   var body = JSON.stringify({ username: username, password: password });
@@ -55,7 +60,6 @@ function authenticateWithApi(username, password, callback) {
 }
 
 function authenticate(client, username, password, callback) {
-
   // Check if client is a zetta-target
   password = password.toString();
   
@@ -64,10 +68,11 @@ function authenticate(client, username, password, callback) {
   }
   
   authenticateWithApi(username, password, function(err, device) {
-    client.deviceId = device.id;
     if (err) {
       return callback(null, false);
     }
+
+    client.deviceId = device.id;
 
     var devicePrefix = 'device/' + device.id + '/';
     
@@ -105,9 +110,19 @@ function authenticate(client, username, password, callback) {
         console.error(err);
         return callback(err);
       }
-      callback(null, true);    
-    });
+      
+      callback(null, true);
 
+      // Make sure keepalive falls within allowed range
+      // Note: Has to be setup after callback() is called.
+      if (client.keepalive > KeepAlive.max) {
+        client.keepalive = KeepAlive.max;
+        client.setUpTimer();
+      } else if (client.keepalive < KeepAlive.min) {
+        client.keepalive = KeepAlive.min;
+        client.setUpTimer();
+      }
+    });
   });
 }
 

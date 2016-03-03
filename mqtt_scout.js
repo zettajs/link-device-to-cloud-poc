@@ -8,7 +8,7 @@ var DiscoverResource = require('./discover_resource');
 var MqttScout = module.exports = function(options) {
 
   this.client = new MqttClient(mqtt.connect(options.url, { username: options.username,
-                                            password: options.password
+                                                           password: options.password
                                                          }));
   
   Scout.call(this);
@@ -46,7 +46,7 @@ MqttScout.prototype.initDevice = function(deviceId, deviceModel) {
   this.server.find(query, function(err, results) {
     if (results.length > 0) {
       var device = self.provision(results[0], MqttDriver, deviceId, deviceModel, self.client);
-      if(!device) {
+      if (!device) {
         device = self.server._jsDevices[deviceId];
         device.state = deviceModel.state;
         if(deviceModel.properties) {
@@ -54,7 +54,8 @@ MqttScout.prototype.initDevice = function(deviceId, deviceModel) {
             device[key] = deviceModel.properties[key];
           });
         }
-        device._resetHeartbeat();
+
+        clearTimeout(device._destroyTimer);
         device.log('device reconnected.');
       }
     } else {

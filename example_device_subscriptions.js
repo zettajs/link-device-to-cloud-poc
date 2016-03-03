@@ -6,6 +6,10 @@ var client = new MqttClient(mqtt.connect('mqtt://localhost:1883', {
   password: process.argv[3]
 }));
 
+client.on('close', function() {
+  console.log('on disconnect');
+})
+
 
 var currentState = 'off';
 // Zetta Model of Thermostat
@@ -26,29 +30,33 @@ config
 
 
 // Init Device - Zetta publishes that it's been initialized.
-client.publish('$init', JSON.stringify({
-  type: 'thermostat', // Should this be defined by the device? Could zetta derive it from provisioning/auth steps.
-  state: currentState,
-  properties: {
-    serialNumber: '1L080B50230',
-    modelNumber: '13WX78KS011',
-    macAddress: '00:0a:95:9d:68:16',
-    temperature: 60
-  },
-  transitions: [
-    { name: 'set-temperature', args: [{ type: 'number', name: 'temperature' }]},
-    'turn-fan-on',
-    'turn-fan-off',
-    'turn-on',
-    'turn-off'
-  ],
-  machine: { // Send state machine, need list of states and what transitions are allowed for each.
-    // Could you bit masking mapping to the transitions array, could save data on the wire and memory. Program space wouldn't necessarily be effected.
-    'on':  0b10111, 
-    'off': 0b01000
-  },
-  streams: ['temperature']
-}));
+client.on('connect', function() {
+  console.log('on connect')
+  
+  client.publish('$init', JSON.stringify({
+    type: 'thermostat', // Should this be defined by the device? Could zetta derive it from provisioning/auth steps.
+    state: currentState,
+    properties: {
+      serialNumber: '1L080B50230',
+      modelNumber: '13WX78KS011',
+      macAddress: '00:0a:95:9d:68:16',
+      temperature: 60
+    },
+    transitions: [
+      { name: 'set-temperature', args: [{ type: 'number', name: 'temperature' }]},
+      'turn-fan-on',
+      'turn-fan-off',
+      'turn-on',
+      'turn-off'
+    ],
+    machine: { // Send state machine, need list of states and what transitions are allowed for each.
+      // Could you bit masking mapping to the transitions array, could save data on the wire and memory. Program space wouldn't necessarily be effected.
+      'on':  0b10111, 
+      'off': 0b01000
+    },
+    streams: ['temperature']
+  }));
+})
 
 client.subscribe('$init/ack');
 client.on('$init/ack', function() {
@@ -57,9 +65,9 @@ client.on('$init/ack', function() {
 
 
 // Publish Stream data for temperature
-setInterval(function() {
-  client.publish('temperature', ''+(Math.random() * 100));
-}, 500);
+//setInterval(function() {
+//  client.publish('temperature', ''+(Math.random() * 100));
+//}, 500);
 
 
 console.log(process.pid);
@@ -130,6 +138,6 @@ client.on('$transition/turn-fan-off', function(message) {
                                                            }));  
 });
 
-setInterval(function() {
-  client.publish('$heartbeat', JSON.stringify({ state: currentState }));
-}, 5000)
+//setInterval(function() {
+//  client.publish('$heartbeat', JSON.stringify({ state: currentState }));
+//}, 5000)
