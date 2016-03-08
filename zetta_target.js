@@ -1,6 +1,5 @@
 var zetta = require('zetta');
 var MqttScout = require('./mqtt_scout');
-
 var MemoryRegistries = require('zetta-memory-registry')(zetta);
 var PeerRegistry = MemoryRegistries.PeerRegistry;
 var DeviceRegistry = MemoryRegistries.DeviceRegistry;
