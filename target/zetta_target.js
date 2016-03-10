@@ -9,5 +9,5 @@ var mqttClientId = (process.env.COREOS_PRIVATE_IPV4 || 'localhost') + ':' + port
 
 zetta({ registry: new DeviceRegistry(), peerRegistry: new PeerRegistry()})
   .name('cloud-devices')
-  .use(MqttScout, { clientId: mqttClientId, url: 'mqtt://localhost:1883', username: 'zetta-target', password: '12345' })
+  .use(MqttScout, { clientId: mqttClientId, url: process.env.BROKER_URL || 'mqtt://localhost:1884', username: 'zetta-target', password: '12345' })
   .listen(port);

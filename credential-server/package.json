@@ -13,6 +13,7 @@
     "api-media-type": "^0.1.0",
     "argo": "^1.0.0",
     "argo-resource": "0.0.11",
+    "argo-url-helper": "^0.2.0",
     "argo-url-router": "0.0.6",
     "mosca": "^1.0.2",
     "mqtt": "^1.7.0",
