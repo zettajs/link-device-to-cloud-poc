@@ -37,7 +37,7 @@ var rabbitmqSettings = {
   amqp: require('amqp'),
   exchange: 'ascolatore5672',
   client: {
-    host: brokerUrl.host,
+    host: brokerUrl.hostname,
     port: brokerUrl.port
   }
 };
