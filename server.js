@@ -2,14 +2,35 @@ var url = require('url');
 var http = require('http');
 var mosca = require('mosca');
 var getBody = require('./get_body');
+var Proxy = require('./proxy');
+
+var RouterClient = require('./etcd-clients/router_client');
+var ServiceRegistryClient = require('./etcd-clients/service_registry_client');
+var VersionClient = require('./etcd-clients/version_client')
+var MonitorService = require('./target-monitor/service');
+
+var opts = {
+  host: process.env.COREOS_PRIVATE_IPV4
+};
+
+// allow a list of peers to be passed, overides COREOS_PRIVATE_IPV4
+if (process.env.ETCD_PEER_HOSTS) {
+  opts.host = process.env.ETCD_PEER_HOSTS.split(',');
+}
+
+var serviceRegistryClient = new ServiceRegistryClient(opts);
+var routerClient = new RouterClient(opts);
+var versionClient = new VersionClient(opts);
+
+var targetMonitor = new MonitorService(serviceRegistryClient, { 
+  disabled: (process.env.DISABLE_TARGET_MONITOR) ? true : false
+});
+
+var proxy = new Proxy(serviceRegistryClient, routerClient, versionClient, targetMonitor);
 
 var moscaSettings = {
   port: 1883
 };
-
-var Targets = [
-  { tenantId: 'default', targetUrl: 'http://localhost:1337' }
-];
 
 var targetKey = {
   username: 'zetta-target',
@@ -73,6 +94,7 @@ function authenticate(client, username, password, callback) {
     }
 
     client.deviceId = device.id;
+    client.tenantId = device.tenantId;
 
     var devicePrefix = 'device/' + device.id + '/';
     
@@ -100,29 +122,49 @@ function authenticate(client, username, password, callback) {
     // Pick target to have the device initialized on
     //  - Could look at etcd targets and call some http command on device.
     //  - Could look at connected mqtt zetta targets and send publish
-    
-    var targets = Targets.filter(function(target) {
-      return target.tenantId === device.tenantId;
-    });
 
-    initDeviceOnTarget(targets[0].targetUrl, device.id, function(err) {
+    proxy._targetAllocation.lookup(device.tenantId, function(err, serverUrl) {
       if (err) {
-        console.error(err);
+        console.error('Peer Socket Failed to allocate target:', err);
         return callback(err);
       }
       
-      callback(null, true);
-
-      // Make sure keepalive falls within allowed range
-      // Note: Has to be setup after callback() is called.
-      if (client.keepalive > KeepAlive.max) {
-        client.keepalive = KeepAlive.max;
-        client.setUpTimer();
-      } else if (client.keepalive < KeepAlive.min) {
-        client.keepalive = KeepAlive.min;
-        client.setUpTimer();
+      if (!serverUrl) {
+        console.error('No targets available for tenant:', device.tenantId);
+        return callback(new Error('No targets available.'));
       }
+
+      initDeviceOnTarget(serverUrl, device.id, function(err) {
+        if (err) {
+          console.error(err);
+          return callback(err);
+        }
+
+
+        // Add device to router client.
+        proxy._routerClient.add(device.tenantId, device.id, serverUrl, true, function(err) {
+
+          if (err) {
+            console.error('Failed to add device to router.', err);
+            return callback(err);
+          }
+          
+          callback(null, true);
+
+          // Make sure keepalive falls within allowed range
+          // Note: Has to be setup after callback() is called.
+          if (client.keepalive > KeepAlive.max) {
+            client.keepalive = KeepAlive.max;
+            client.setUpTimer();
+          } else if (client.keepalive < KeepAlive.min) {
+            client.keepalive = KeepAlive.min;
+            client.setUpTimer();
+          }
+          
+        });
+      });
     });
+    
   });
 }
 
@@ -189,5 +231,7 @@ server.on('clientDisconnected', function(client) {
     };
 
     server.publish(packet);
+
+    proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
   }
 });
