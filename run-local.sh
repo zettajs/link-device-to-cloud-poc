@@ -23,6 +23,7 @@ if [ "$1" == "" ]; then
         echo "Cleanup"
         sleep 2;
         kill $ETCD_PID
+        rm -R -f default.etcd
     }
 
     trap cleanup EXIT

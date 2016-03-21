@@ -82,7 +82,11 @@ function authenticateWithApi(username, password, callback) {
 
 function authenticate(client, username, password, callback) {
   // Check if client is a zetta-target
-  password = password.toString();
+  if (password) {
+    password = password.toString();
+  } else {
+    return callback(null, false);
+  }
   
   if (username === targetKey.username && password === targetKey.password) {
     return callback(null, true);
