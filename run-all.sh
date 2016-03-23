@@ -1,6 +1,7 @@
 #!/bin/sh
 
-source /etc/environment
+#source /etc/environment
+COREOS_PRIVATE_IPV4="10.0.0.226"
 echo "Broker for ${COREOS_PRIVATE_IPV4}"
 docker run -d --hostname my-rabbit --name some-rabbit -p 8080:15672 -p 5672:5672 rabbitmq:3-management
 sleep 60

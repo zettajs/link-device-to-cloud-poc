@@ -10,13 +10,9 @@
   "license": "ISC",
   "dependencies": {
     "amqp": "^0.2.4",
-    "api-media-type": "^0.1.0",
-    "argo": "^1.0.0",
-    "argo-resource": "0.0.11",
-    "argo-url-router": "0.0.6",
+    "async": "^1.5.2",
     "mosca": "^1.0.2",
     "mqtt": "^1.7.0",
-    "node-uuid": "^1.4.7",
-    "zetta": "^1.0.0-beta.6"
+    "node-etcd": "^4.2.1"
   }
 }
