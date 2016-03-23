@@ -141,3 +141,21 @@ ServiceRegistry.prototype._buildServer = function(data) {
   data = JSON.parse(data.value);
   return data;
 };
+
+ServiceRegistry.prototype.get = function(targetName, cb) {
+  var self = this;
+  var dir = this._etcDirectory;
+  this._client.get(dir + '/' + targetName, { consistent: true }, function(err, results) {
+    if (err) {
+      cb(err);
+      return;
+    }
+
+    if (results.node) {      
+      cb(null, self._buildServer(results.node));
+    } else {
+      cb();
+    }
+  });
+};
+

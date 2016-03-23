@@ -9,6 +9,8 @@ var ServiceRegistryClient = require('./etcd-clients/service_registry_client');
 var VersionClient = require('./etcd-clients/version_client')
 var MonitorService = require('./target-monitor/service');
 
+var DisconnectDeviceTopic = '$disconnect-device';
+
 var opts = {
   host: process.env.COREOS_PRIVATE_IPV4
 };
@@ -144,7 +146,8 @@ function authenticate(client, username, password, callback) {
           return callback(err);
         }
 
-
+        server.zettaUUIDMapping[device.id] = client.id;
+        
         // Add device to router client.
         proxy._routerClient.add(device.tenantId, device.id, serverUrl, true, function(err) {
 
@@ -206,9 +209,28 @@ var authorizeSubscribe = function (client, topic, callback) {
 }
 
 var server = new mosca.Server(moscaSettings);   //here we start mosca
+
+server.zettaUUIDMapping = {}; // <uuid>: client.id
+
 server.on('ready', function() {
   server.authenticate = authenticate;
   console.log('started');
+
+  server.ascoltatore.subscribe(DisconnectDeviceTopic, function(topic, payload) {
+    try {
+      var device = JSON.parse(payload);
+    } catch(err) {
+      console.error(err);
+      return;
+    }
+    
+    var clientId = server.zettaUUIDMapping[device.name];
+    if (!clientId) {
+      return;
+    }
+
+    server.clients[clientId].close();
+  });
 });
 
 server.on('clientConnected', function(client) {
@@ -216,26 +238,64 @@ server.on('clientConnected', function(client) {
 });
 
 server.on('published', function (packet, client) {
-  console.log("Published :=", packet.topic);
+//  console.log("Published :=", packet.topic);
 });
 
 server.on('subscribed', function (topic, client) {
-  console.log("Subscribed :=", topic);
+//  console.log("Subscribed :=", topic);
 });
 
 server.on('unsubscribed', function (topic, client) {
-  console.log('unsubscribed := ', client.id, topic);
+//  console.log('unsubscribed := ', client.id, topic);
 });
 
 server.on('clientDisconnected', function(client) {
-  if(client.deviceId) {
+  if (client.deviceId) {
     var packet = {
       topic: 'device/' + client.deviceId + '/$disconnect',
       payload: '' 
     };
 
     server.publish(packet);
-
     proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
+
+    delete server.zettaUUIDMapping[client.deviceId];
+  } else {
+    proxy._serviceRegistryClient.get(client.id, function(err, target) {
+      if (err) {
+        console.error(err);
+        return;
+      }
+
+      if (!target) {
+        console.error('Did not find', client.id, 'in /services/zetta');
+        return;
+      }
+
+      if (target.tenantId === undefined) {
+        console.error(client.id, 'Does not have tenantId');
+        return;
+      }
+      
+      proxy._routerClient.findAll(target.tenantId, function(err, devices) {
+        if (err) {
+          console.error(err);
+          return;
+        }
+
+        devices.filter(function(device) {
+          // Filter out devices only connected to disconnected target
+          return 'http://' + client.id === device.url;
+        }).forEach(function(device) {
+          // Tell all brokers to disconnect device with name
+          var packet = {
+            topic: DisconnectDeviceTopic,
+            payload: JSON.stringify(device)
+          };
+
+          server.publish(packet);
+        });
+      })
+    })
   }
 });

@@ -7,9 +7,11 @@ var DiscoverResource = require('./discover_resource');
 
 var MqttScout = module.exports = function(options) {
 
-  this.client = new MqttClient(mqtt.connect(options.url, { username: options.username,
-                                                           password: options.password
-                                                         }));
+  this.client = new MqttClient(mqtt.connect(options.url, {
+    clientId: options.clientId,
+    username: options.username,
+    password: options.password
+  }));
   
   Scout.call(this);
 };

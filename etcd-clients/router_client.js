@@ -30,13 +30,22 @@ var RouterClient = module.exports = function(options) {
 };
 util.inherits(RouterClient, EventEmitter);
 
-RouterClient.prototype.findAll = function(tenantId, cb) {
+RouterClient.prototype.findAll = function(tenantId, isCloudDevice, cb) {
   if (typeof tenantId === 'function') {
     cb = tenantId;
     tenantId = null;
   }
 
+  if (typeof isCloudDevice === 'function') {
+    cb = isCloudDevice;
+    isCloudDevice = false;
+  }
+
   var dir = tenantId ? this._etcDirectory + '/' + tenantId : this._etcDirectory;
+  if (isCloudDevice) {
+    dir = dir + '/' + CloudDeviceDir;
+  }
+  
   this._client.get(dir, { recursive: true, consistent: true }, function(err, results) {
     if (err) {
       cb(err);

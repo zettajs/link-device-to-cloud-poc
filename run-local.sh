@@ -12,6 +12,7 @@ export COREOS_PRIVATE_IPV4=localhost
 function start_target() {
     local port=$1
     MAPPED_PORT=$port node zetta_target.js > /dev/null &
+    echo "Target PID=$!"
     etcdctl set /services/zetta/localhost:$port '{"type":"cloud-target","url":"http://localhost:'$port'","created":"2015-04-23T14:50:42.000Z","version":"0"}'   
 }
 
@@ -35,7 +36,7 @@ if [ "$1" == "" ]; then
     etcdctl mkdir /services/zetta
 fi
 
-node server.js > /dev/null &
+node server.js &
 
 node credential-server/server.js > /dev/null &
 
