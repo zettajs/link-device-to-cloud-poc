@@ -7,7 +7,7 @@ else
 fi
 
 startChild() {
-    node example_device_subscriptions.js $1 $2 &
+    node client/example_device_subscriptions.js $1 $2 &
 }
 
 COUNTER=0
