@@ -30,8 +30,21 @@ var targetMonitor = new MonitorService(serviceRegistryClient, {
 
 var proxy = new Proxy(serviceRegistryClient, routerClient, versionClient, targetMonitor);
 
+var brokerUrl = url.parse(process.env.BROKER_URL);
+var rabbitmqSettings = {
+  type: 'amqp',
+  json: false,
+  amqp: require('amqp'),
+  exchange: 'ascolatore5672',
+  client: {
+    host: brokerUrl.hostname,
+    port: brokerUrl.port
+  }
+};
+
 var moscaSettings = {
-  port: 1883
+  port: 1884,
+  backend: rabbitmqSettings
 };
 
 var targetKey = {

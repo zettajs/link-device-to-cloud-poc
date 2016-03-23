@@ -1,0 +1,19 @@
+{
+  "name": "link-mqtt-poc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "api-media-type": "^0.1.0",
+    "argo": "^1.0.0",
+    "argo-resource": "0.0.11",
+    "argo-url-helper": "^0.2.0",
+    "argo-url-router": "0.0.6",
+    "node-uuid": "^1.4.7"
+  }
+}
