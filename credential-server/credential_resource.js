@@ -1,12 +1,23 @@
 var media = require('api-media-type');
 var crypto = require('crypto');
 var uuid = require('node-uuid');
+var PgClient = require('./pg_client');
 
-var CredentialResource = module.exports = function() {
+var CredentialResource = module.exports = function(connectionString) {
   this.path = '/';
+  this.connectionString = connectionString;
 };
 
 CredentialResource.prototype.init = function(config) {
+  var self = this;
+
+  var opts = {
+    table: 'credentials_table',
+    connectionString: this.connectionString
+  };
+
+  this.client = new PgClient(opts);
+
   config
     .path(this.path)
     .produces(media.SIREN)
@@ -18,6 +29,7 @@ CredentialResource.prototype.init = function(config) {
 };
 
 CredentialResource.prototype.create = function(env, next) {
+  var self = this;
   env.request.getBody(function(err, body) {
     if(err) {
       env.response.statusCode = 500; 
@@ -44,8 +56,9 @@ CredentialResource.prototype.create = function(env, next) {
       name: name,
       username: keyBuf,
       password: secretBuf,
-      tenantId: 'default',
-      id: id
+      tenant: 'default',
+      server: 'cloud-devices',
+      device: id
     }
 
     var responseBody = {
@@ -58,13 +71,16 @@ CredentialResource.prototype.create = function(env, next) {
         }  
       ]
     }
-    save(obj, function() {
+
+    self.client.insert(obj, function(err) {
+      if(err) {
+        env.response.statusCode = 500;
+        return next(env);
+      }
       env.response.statusCode = 201;
       env.response.body = responseBody;
-      next(env);
+      return next(env);
     });
-
-    
   });
 }
 
@@ -92,8 +108,8 @@ CredentialResource.prototype.list = function(env, next) {
       }  
     ]
   }
-
-  list(function(err, data) {
+  
+  this.client.all(function(err, data) {
     if(err) {
       env.response.statusCode = 500;
       return next(env);
@@ -105,8 +121,8 @@ CredentialResource.prototype.list = function(env, next) {
         properties: {
           name: obj.name,
           username: obj.username,
-          id: obj.id,
-          tenantId: 'default'
+          id: obj.device,
+          tenant: 'default'
         },
         links: [
           {
@@ -119,14 +135,15 @@ CredentialResource.prototype.list = function(env, next) {
 
     env.response.statusCode = 200;
     env.response.body = body;
-    next(env);
+    return next(env);
   });
+
 }
 
 CredentialResource.prototype.del = function(env, next) {
   var id = env.route.params.id;
 
-  del(id, function(err) {
+  this.client.del({device: id}, function(err) {
     if(err) {
       env.response.statusCode = 500;
       return next(env);
@@ -135,9 +152,11 @@ CredentialResource.prototype.del = function(env, next) {
     env.response.statusCode = 202;
     next(env);
   })
+
 }
 
 CredentialResource.prototype.authenticate = function(env, next) {
+  var self = this;
   env.request.getBody(function(err, body) {
     if(err) {
       env.response.statusCode = 500; 
@@ -160,30 +179,31 @@ CredentialResource.prototype.authenticate = function(env, next) {
       return next(env);
     }
 
+    var search = {
+      username: body.username,
+      password: body.password
+    }
 
-    get(body.username, function(err, device) {
+    self.client.get(search, function(err, results) {
+      console.log(arguments);
       if (err) {
         env.response.statusCode = 500;
         return next(env);
       }
 
-      if (!device) {
+      if (!results.length) {
         env.response.statusCode = 401;
         return next(env);
       }
 
-      if (device.password !== body.password) {
-        env.response.statusCode = 401;
-        return next(env);
-      }
-
+      var device = results[0];
       var responseBody = {
         class: ['credential'],
         properties: {
           name: device.name,
           username: device.username,
-          id: device.id,
-          tenantId: 'default'
+          id: device.device,
+          tenant: 'default'
         },
         links: [
           {
