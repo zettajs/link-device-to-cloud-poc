@@ -1,7 +1,12 @@
 var mqtt = require('mqtt');
 var MqttClient = require('./mqtt_client');
 
-var client = new MqttClient(mqtt.connect('mqtt://172.17.8.101:1884', {
+var URL = process.env.BROKER_URL || 'mqtt://localhost:1883';
+
+console.log('Client: BROKER_URL=', URL);
+
+var client = new MqttClient(mqtt.connect(URL, {
+  clientId: process.argv[2],
   username: process.argv[2],
   password: process.argv[3]
 }));
@@ -65,12 +70,12 @@ client.on('$init/ack', function() {
 
 
 // Publish Stream data for temperature
-//setInterval(function() {
-//  client.publish('temperature', ''+(Math.random() * 100));
-//}, 500);
+setInterval(function() {
+  client.publish('temperature', ''+(Math.random() * 100));
+}, 500);
 
 
-console.log(process.pid);
+console.log('Device Pid=', process.pid);
 // Wait for "on" button on device to send turn-on transition
 process.on('SIGUSR2', function() {
   console.log('button press')

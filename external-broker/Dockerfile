@@ -5,8 +5,8 @@ ADD     . /broker
 WORKDIR /broker
 RUN     npm install
 
-env     PORT 1338
-EXPOSE  1338
+env     PORT 1883
+EXPOSE  1883
 
-CMD        ["zetta_target.js"]
+CMD        ["server.js"]
 ENTRYPOINT ["node"] 

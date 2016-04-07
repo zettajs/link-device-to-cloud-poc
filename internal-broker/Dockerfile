@@ -1,12 +1,12 @@
-FROM node:0.12
+FROM node:4
 MAINTAINER Apigee Link
 
 ADD     . /broker
 WORKDIR /broker
 RUN     npm install
 
-env     PORT 1338
-EXPOSE  1338
+env     PORT 2883
+EXPOSE  2883
 
 CMD        ["server.js"]
 ENTRYPOINT ["node"] 

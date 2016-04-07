@@ -43,22 +43,18 @@ var rabbitmqSettings = {
 };
 
 var moscaSettings = {
-  port: 1884,
+  port: Number(process.env.PORT) || 1883,
   backend: rabbitmqSettings
 };
 
-var targetKey = {
-  username: 'zetta-target',
-  password: '12345'
-};
-
+// Min and Max keep-alive times that can be set from client
 var KeepAlive = {
   min: 15,
   max: 720
 };
 
 function authenticateWithApi(username, password, callback) {
-  var parsed = url.parse(process.env.AUTH_API || 'http://localhost:1338');
+  var parsed = url.parse(process.env.CREDENTIAL_API_URL || 'http://localhost:1338');
   var body = JSON.stringify({ username: username, password: password });
   
   var opts = {
@@ -96,15 +92,21 @@ function authenticateWithApi(username, password, callback) {
 }
 
 function authenticate(client, username, password, callback) {
+
+  if (!username) {
+    return callback(null, false);
+  }
+
+  // Client.id must be the same as username
+  if (client.id !== username) {
+    return callback(null, false);
+  }
+  
   // Check if client is a zetta-target
   if (password) {
     password = password.toString();
   } else {
     return callback(null, false);
-  }
-  
-  if (username === targetKey.username && password === targetKey.password) {
-    return callback(null, true);
   }
   
   authenticateWithApi(username, password, function(err, device) {
@@ -113,7 +115,7 @@ function authenticate(client, username, password, callback) {
     }
 
     client.deviceId = device.id;
-    client.tenantId = device.tenantId;
+    client.tenantId = device.tenant;
 
     var devicePrefix = 'device/' + device.id + '/';
     
@@ -142,14 +144,14 @@ function authenticate(client, username, password, callback) {
     //  - Could look at etcd targets and call some http command on device.
     //  - Could look at connected mqtt zetta targets and send publish
 
-    proxy._targetAllocation.lookup(device.tenantId, function(err, serverUrl) {
+    proxy._targetAllocation.lookup(device.tenant, function(err, serverUrl) {
       if (err) {
         console.error('Peer Socket Failed to allocate target:', err);
         return callback(err);
       }
       
       if (!serverUrl) {
-        console.error('No targets available for tenant:', device.tenantId);
+        console.error('No targets available for tenant:', device.tenant);
         return callback(new Error('No targets available.'));
       }
 
@@ -162,7 +164,7 @@ function authenticate(client, username, password, callback) {
         server.zettaUUIDMapping[device.id] = client.id;
         
         // Add device to router client.
-        proxy._routerClient.add(device.tenantId, device.id, serverUrl, true, function(err) {
+        proxy._routerClient.add(device.tenant, device.id, serverUrl, true, function(err) {
 
           if (err) {
             console.error('Failed to add device to router.', err);
@@ -250,65 +252,14 @@ server.on('clientConnected', function(client) {
   console.log('client connected', client.id);
 });
 
-server.on('published', function (packet, client) {
-//  console.log("Published :=", packet.topic);
-});
-
-server.on('subscribed', function (topic, client) {
-//  console.log("Subscribed :=", topic);
-});
-
-server.on('unsubscribed', function (topic, client) {
-//  console.log('unsubscribed := ', client.id, topic);
-});
-
 server.on('clientDisconnected', function(client) {
-  if (client.deviceId) {
-    var packet = {
-      topic: 'device/' + client.deviceId + '/$disconnect',
-      payload: '' 
-    };
+  var packet = {
+    topic: 'device/' + client.deviceId + '/$disconnect',
+    payload: '' 
+  };
 
-    server.publish(packet);
-    proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
+  server.publish(packet);
+  proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
 
-    delete server.zettaUUIDMapping[client.deviceId];
-  } else {
-    proxy._serviceRegistryClient.get(client.id, function(err, target) {
-      if (err) {
-        console.error(err);
-        return;
-      }
-
-      if (!target) {
-        console.error('Did not find', client.id, 'in /services/zetta');
-        return;
-      }
-
-      if (target.tenantId === undefined) {
-        console.error(client.id, 'Does not have tenantId');
-        return;
-      }
-      
-      proxy._routerClient.findAll(target.tenantId, function(err, devices) {
-        if (err) {
-          console.error(err);
-          return;
-        }
-
-        devices.filter(function(device) {
-          // Filter out devices only connected to disconnected target
-          return 'http://' + client.id === device.url;
-        }).forEach(function(device) {
-          // Tell all brokers to disconnect device with name
-          var packet = {
-            topic: DisconnectDeviceTopic,
-            payload: JSON.stringify(device)
-          };
-
-          server.publish(packet);
-        });
-      })
-    })
-  }
+  delete server.zettaUUIDMapping[client.deviceId];
 });

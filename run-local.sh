@@ -23,8 +23,11 @@ if [ "$1" == "" ]; then
     function cleanup {
         echo "Cleanup"
         sleep 2;
+        
         kill $ETCD_PID
         rm -R -f default.etcd
+
+        docker rm -f postgres some-rabbit
     }
 
     trap cleanup EXIT
@@ -36,13 +39,25 @@ if [ "$1" == "" ]; then
     etcdctl mkdir /services/zetta
 fi
 
-node broker/server.js &
+# start rabbitmq in docker
+echo "Starting Rabbitmq in docker"
+docker run -d --hostname some-rabbit --name some-rabbit -p 5672:5672 rabbitmq:3-management
 
-node credential-server/server.js > /dev/null &
+# start postgres in docker
+echo "Starting Postgres in docker"
+docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
+sleep 10
+
+SQL_DIR=$(dirname `pwd`)"/tyrell/roles/database/sql/"
+docker run --name create-table --rm -v $SQL_DIR:/sql -e PGPASSWORD="mysecretpassword" postgres sh -c "exec psql -h \"\`/sbin/ip route|awk '/default/ { print $3 }' | cut -d \" \" -f3\`\" -U postgres -1 -f /sql/create_credential_table.sql"
+
+DB_CONNECTION_URL=postgres://postgres:mysecretpassword@localhost:5432/postgres node credential-server/server.js &
+BROKER_URL=ampq://localhost:5672 node external-broker/server.js &
+BROKER_URL=ampq://localhost:5672 node internal-broker/server.js &
 
 start_target $((BASE + 100))
 start_target $((BASE + 101))
-#start_target $((BASE + 102))
+start_target $((BASE + 102))
 
 sleep 1;
 

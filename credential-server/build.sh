@@ -1,3 +1,3 @@
 #!/bin/sh
 
-docker build -t zetta/zetta-mqtt-credential-server .
+docker build -t zetta/link-credential-api .

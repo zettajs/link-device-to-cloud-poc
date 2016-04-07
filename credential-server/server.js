@@ -4,12 +4,11 @@ var urlHelper = require('argo-url-helper');
 var resource = require('argo-resource');
 var CredentialResource = require('./credential_resource');
 
-var ConnectionString = 'postgres://admin1:Testpassword1@test.cu5mxtwkjjqu.us-east-1.rds.amazonaws.com/credentials';
-
+var ConnectionString = process.env.DB_CONNECTION_URL;
 
 argo()
   .use(urlHelper)
   .use(router)
   .use(resource(CredentialResource, ConnectionString))
-  .listen(1338);
+  .listen(process.env.PORT || 1338);
 

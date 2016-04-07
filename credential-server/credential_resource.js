@@ -185,7 +185,6 @@ CredentialResource.prototype.authenticate = function(env, next) {
     }
 
     self.client.get(search, function(err, results) {
-      console.log(arguments);
       if (err) {
         env.response.statusCode = 500;
         return next(env);
