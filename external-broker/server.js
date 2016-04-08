@@ -11,18 +11,22 @@ var MonitorService = require('./target-monitor/service');
 
 var DisconnectDeviceTopic = '$disconnect-device';
 
-var opts = {
+// Keep a list of timers that wait to remove the device from etcd after the DESTROY_TIMEOUT
+// if client reconnects cancel previous one.
+var DESTROY_TIMEOUT = process.env.MQTT_DESTROY_TIMEOUT || 300000;
+var destroyTimers = {}; // <clientId: setTimeout timer>
+
+var etcdOpts = {
   host: process.env.COREOS_PRIVATE_IPV4
 };
-
 // allow a list of peers to be passed, overides COREOS_PRIVATE_IPV4
 if (process.env.ETCD_PEER_HOSTS) {
-  opts.host = process.env.ETCD_PEER_HOSTS.split(',');
+  etcdOpts.host = process.env.ETCD_PEER_HOSTS.split(',');
 }
 
-var serviceRegistryClient = new ServiceRegistryClient(opts);
-var routerClient = new RouterClient(opts);
-var versionClient = new VersionClient(opts);
+var serviceRegistryClient = new ServiceRegistryClient(etcdOpts);
+var routerClient = new RouterClient(etcdOpts);
+var versionClient = new VersionClient(etcdOpts);
 
 var targetMonitor = new MonitorService(serviceRegistryClient, { 
   disabled: (process.env.DISABLE_TARGET_MONITOR) ? true : false
@@ -117,6 +121,11 @@ function authenticate(client, username, password, callback) {
     client.deviceId = device.id;
     client.tenantId = device.tenant;
 
+    // Check if there is an active destroy timer
+    if (destroyTimers[client.deviceId]) {
+      clearTimeout(destroyTimers[client.deviceId]);
+    }
+    
     var devicePrefix = 'device/' + device.id + '/';
     
     var handleSubscribe = client.handleSubscribe;
@@ -257,9 +266,13 @@ server.on('clientDisconnected', function(client) {
     topic: 'device/' + client.deviceId + '/$disconnect',
     payload: '' 
   };
-
+  // Publish disconnect so zetta-target know
   server.publish(packet);
-  proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
 
-  delete server.zettaUUIDMapping[client.deviceId];
+  // Remove from ectd after a given time
+  destroyTimers[client.deviceId] = setTimeout(function() {
+    proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
+    delete server.zettaUUIDMapping[client.deviceId];
+    delete destroyTimers[client.deviceId];
+  }, DESTROY_TIMEOUT);  
 });
