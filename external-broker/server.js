@@ -11,10 +11,10 @@ var MonitorService = require('./target-monitor/service');
 
 var DisconnectDeviceTopic = '$disconnect-device';
 
-// Keep a list of timers that wait to remove the device from etcd after the DESTROY_TIMEOUT
-// if client reconnects cancel previous one.
+// Keep a list of clients with their timers that wait to remove
+// the device from etcd after the DESTROY_TIMEOUT if client reconnects cancel previous one.
 var DESTROY_TIMEOUT = process.env.MQTT_DESTROY_TIMEOUT || 300000;
-var destroyTimers = {}; // <clientId: setTimeout timer>
+var destroyTimers = {}; // <clientId: client>
 
 var etcdOpts = {
   host: process.env.COREOS_PRIVATE_IPV4
@@ -123,7 +123,11 @@ function authenticate(client, username, password, callback) {
 
     // Check if there is an active destroy timer
     if (destroyTimers[client.deviceId]) {
-      clearTimeout(destroyTimers[client.deviceId]);
+      // Stop old client's etcd refresh interval
+      clearInterval(destroyTimers[client.deviceId]._etcdRefreshTimer);
+      // Stop countdown to remove from etcd
+      clearTimeout(destroyTimers[client.deviceId]._destroyTimer);
+      delete destroyTimers[client.deviceId];
     }
     
     var devicePrefix = 'device/' + device.id + '/';
@@ -193,6 +197,11 @@ function authenticate(client, username, password, callback) {
           }
           
         });
+
+        client._etcdRefreshTimer = setInterval(function() {
+          proxy._routerClient.add(device.tenant, device.id, serverUrl, true, function(err) {});
+        }, 60000);
+        
       });
     });
     
@@ -268,10 +277,16 @@ server.on('clientDisconnected', function(client) {
   };
   // Publish disconnect so zetta-target know
   server.publish(packet);
-
+  
   // Remove from ectd after a given time
-  destroyTimers[client.deviceId] = setTimeout(function() {
+  destroyTimers[client.deviceId] = client;
+  client._destroyTimer = setTimeout(function() {
+    // Remove from etcd
     proxy._routerClient.remove(client.tenantId, client.deviceId, true, function() {});
+
+    // Clear the etcd refresh timer
+    clearInterval(client._etcdRefreshTimer);
+    
     delete server.zettaUUIDMapping[client.deviceId];
     delete destroyTimers[client.deviceId];
   }, DESTROY_TIMEOUT);  
