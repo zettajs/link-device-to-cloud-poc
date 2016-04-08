@@ -7,11 +7,14 @@ if [ "$1" != "" ]; then BASE=$1; fi;
 
 SERVICE_REGISTRY_PORT=$((BASE + 0))
 
+TARGET_DIR=${TARGET_DIR:-../zetta-target-server}
+ROUTER_DIR=${ROUTER_DIR:-../zetta-cloud-proxy}
+
 export COREOS_PRIVATE_IPV4=localhost
 
 function start_target() {
     local port=$1
-    MAPPED_PORT=$port node target/zetta_target.js > /dev/null &
+    MQTT_BROKER_URL=mqtt://localhost:2883 MAPPED_PORT=$port node $TARGET_DIR/target_server.js &
     echo "Target PID=$!"
     etcdctl set /services/zetta/localhost:$port '{"type":"cloud-target","url":"http://localhost:'$port'","created":"2015-04-23T14:50:42.000Z","version":"0"}'   
 }
@@ -57,11 +60,11 @@ BROKER_URL=ampq://localhost:5672 node internal-broker/server.js &
 
 start_target $((BASE + 100))
 start_target $((BASE + 101))
-start_target $((BASE + 102))
+#start_target $((BASE + 102))
 
 sleep 1;
 
-PORT=$((BASE + 0)) node ../zetta-cloud-proxy/proxy_server.js &
+PORT=$((BASE + 0)) node $ROUTER_DIR/proxy_server.js &
 ROUTER_PID=$!
 
 wait;
