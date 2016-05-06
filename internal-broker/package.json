@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "amqp": "^0.2.4",
+    "ascoltatori": "^2.0.1",
     "mosca": "^1.0.2",
     "node-etcd": "^4.2.1"
   }
