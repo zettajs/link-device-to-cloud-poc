@@ -31,3 +31,6 @@ To demonstrate the functionality of connecting a device directly to Apigee Link 
 4. Device sends representation of self to broker, and then is passed to Zetta.
 5. Zetta dynamically configures device based on capabilities expressed over MQTT.
 
+## Disclaimer
+
+This is not an officially supported Google product.
